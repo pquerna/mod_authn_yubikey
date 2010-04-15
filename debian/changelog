@@ -1,4 +1,4 @@
-libapache2-mod-authn_yubikey (0.1-1) unstable; urgency=low
+libapache2-mod-authn-yubikey (0.1-1) unstable; urgency=low
 
   * Initial release
 
