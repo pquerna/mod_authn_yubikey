@@ -48,6 +48,13 @@
 # define D(x)			/* nothing */
 #endif
 
+#ifndef YK_PACKAGE
+#define YK_PACKAGE "mod_authn_yubikey"
+#endif
+#ifndef YK_PACKAGE_VERSION
+#define YK_PACKAGE_VERSION "0.1"
+#endif
+
 struct yubikey_client_st
 {
   CURL *curl;
