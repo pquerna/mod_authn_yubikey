@@ -1,0 +1,16 @@
+Source: libapache2-mod-authn_yubikey
+Section: web
+Priority: optional
+Maintainer: Paul Querna <pquerna@apache.org>
+Build-Depends: debhelper (>= 7), apache2-threaded-dev | apache2-prefork-dev, libcurl4-openssl-dev
+Standards-Version: 3.8.2
+
+Package: libapache2-mod-authn_yubikey
+Architecture: any
+Depends: ${shlibs:Depends}, apache2.2-common | apache2.2-bin, libcurl3
+Description:  The mod_authn_yubikey  module is an authentication provider for 
+ the apache 2.2 platform. It leverages the YubiKey  which is a small token that 
+ acts as an authentication device.
+ 
+ By enabling your apache installation with this module you can use your YubiKey 
+ for authentication with your website.

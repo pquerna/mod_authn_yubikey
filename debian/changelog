@@ -1,0 +1,6 @@
+libapache2-mod-authn_yubikey (0.1-1) unstable; urgency=low
+
+  * Initial release
+
+ -- Paul Querna <pquerna@apache.org>  Thu, 15 Apr 2010 14:57:57 -0700
+
