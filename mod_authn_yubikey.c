@@ -324,6 +324,7 @@ static int isUserValid(const char *user,
 /* This does some initial checking, like if we're running on a SSL line or not */
 static int checkInitial(request_rec *r) 
 {
+  return OK;
   yubiauth_dir_cfg *cfg = ap_get_module_config(r->per_dir_config, &authn_yubikey_module);
   ap_log_rerror(APLOG_MARK, APLOG_ERR|APLOG_DEBUG, 0, r,
                 LOG_PREFIX "requireSecure: %d", cfg->requireSecure);
