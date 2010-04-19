@@ -27,7 +27,7 @@ build: build-stamp
 build-stamp: configure-stamp 
 	dh_testdir
 
-	apxs2 -c -lcurl libykclient.c mod_authn_yubikey.c
+	apxs2 -c -lcurl mod_authn_yubikey.c libykclient.c
 
 	touch $@
 
