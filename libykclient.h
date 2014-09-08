@@ -33,6 +33,7 @@
 #ifndef YUBIKEY_CLIENT_H
 # define YUBIKEY_CLIENT_H
 
+# include <httpd.h>
 # include <stdint.h>
 # include <string.h>
 
@@ -64,13 +65,14 @@ yubikey_client_set_info (yubikey_client_t client,
 
 const char *yubikey_client_strerror (int ret);
 
-int yubikey_client_request (yubikey_client_t client, const char *yubikey);
+int yubikey_client_request (yubikey_client_t client, const char *yubikey, request_rec *r);
 
 /* One call interface. */
 int
 yubikey_client_simple_request (const char *yubikey,
 			       unsigned int client_id,
 			       size_t keylen,
-			       const char *key);
+			       const char *key,
+			       request_rec *r);
 
 #endif
