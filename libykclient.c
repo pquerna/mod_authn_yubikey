@@ -39,6 +39,7 @@
 #include <ctype.h>
 
 #include <curl/curl.h>
+#include "http_log.h"
 
 #ifdef DEBUG
 # define D(x) do {							\
@@ -223,6 +224,12 @@ yubikey_client_request (yubikey_client_t client,
   //char *proxyPwd = "username:password";
   
   asprintf (&url, url_template, cfg->validationProtocol, cfg->validationHost, client->client_id, yubikey);
+
+  /* ap_log_rerror(APLOG_MARK, APLOG_ERR, 0, r,
+                              "DebugLogging: %s %d %s %s",
+                              url,cfg->timeoutSeconds,cfg->validationProtocol,cfg->validationHost);*/
+
+
   if (!url)
     return YUBIKEY_CLIENT_OUT_OF_MEMORY;
 

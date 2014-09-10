@@ -586,11 +586,11 @@ static const command_rec authn_yubikey_cmds[] = {
     AP_INIT_TAKE1("AuthYubiKeyTimeout", ap_set_int_slot,
                   (void*) APR_OFFSETOF(yubiauth_dir_cfg, timeoutSeconds),
                   ACCESS_CONF, "The timeout when users have to reauthenticate (Default 43200 seconds [12h])"),
-    AP_INIT_TAKE1("AuthYkValidationProtocol", ap_set_int_slot,
+    AP_INIT_TAKE1("AuthYkValidationProtocol", ap_set_string_slot,
                   (void*) APR_OFFSETOF(yubiauth_dir_cfg, validationProtocol),
                   ACCESS_CONF, "The protocol of the URL of the location where the key can be" \
     		  "authenticated"),
-    AP_INIT_TAKE1("AuthYkValidationHost", ap_set_int_slot,
+    AP_INIT_TAKE1("AuthYkValidationHost", ap_set_string_slot,
                   (void*) APR_OFFSETOF(yubiauth_dir_cfg, validationHost),
                   ACCESS_CONF, "The host of the URL of the location where the key can be" \
           "authenticated"),
@@ -600,7 +600,7 @@ static const command_rec authn_yubikey_cmds[] = {
 		  "page (Default Off)"),
     AP_INIT_FLAG("AuthYubiKeyRequireSecure", ap_set_flag_slot,
                   (void*) APR_OFFSETOF(yubiauth_dir_cfg, requireSecure),
-                  ACCESS_CONF|RSRC_CONF, 
+                  ACCESS_CONF|RSRC_CONF,
 		 "Whether or not a secure site is required to pass authentication (Default On)"),
     {NULL}
 };
@@ -616,8 +616,8 @@ static void *create_yubiauth_dir_cfg(apr_pool_t *pool, char *x)
 
     dir->tmpAuthDbFilename = NULL;
     dir->userAuthDbFilename = NULL;
-    dir->validationProtocol = "https";
-    dir->validationHost = "api.yubico.com";
+    dir->validationProtocol = NULL;
+    dir->validationHost = NULL;
 
     return dir;
 }
@@ -629,12 +629,15 @@ static void *merge_yubiauth_dir_cfg(apr_pool_t *pool, void *BASE, void *ADD)
   yubiauth_dir_cfg *dir = apr_pcalloc(pool, sizeof (yubiauth_dir_cfg));
 
   /* merge */
-  dir->timeoutSeconds = (add->timeoutSeconds == UNSET) ? base->timeoutSeconds : add->timeoutSeconds; 
+  dir->timeoutSeconds = (add->timeoutSeconds == UNSET) ? base->timeoutSeconds : add->timeoutSeconds;
   dir->requireSecure = (add->requireSecure == UNSET) ? base->requireSecure : add->requireSecure;
   dir->externalErrorPage = (add->externalErrorPage == UNSET) ? base->externalErrorPage : add->externalErrorPage;
-  
+
   dir->userAuthDbFilename = (add->userAuthDbFilename == NULL) ? base->userAuthDbFilename : add->userAuthDbFilename;
   dir->tmpAuthDbFilename = (add->tmpAuthDbFilename == NULL) ? base->tmpAuthDbFilename : add->tmpAuthDbFilename;
+
+  dir->validationHost = (add->validationHost == NULL) ? base->validationHost : add->validationHost;
+  dir->validationProtocol = (add->validationProtocol == NULL) ? base->validationProtocol : add->validationProtocol;
 
   /* Set defaults configuration here
    */
@@ -652,6 +655,12 @@ static void *merge_yubiauth_dir_cfg(apr_pool_t *pool, void *BASE, void *ADD)
   }
   if (dir->tmpAuthDbFilename == NULL) {
     dir->tmpAuthDbFilename = ap_server_root_relative(pool, DEFAULT_TMP_DB);
+  }
+  if (dir->validationHost == NULL) {
+   dir->validationHost = "api.yubico.com";
+  }
+  if (dir->validationProtocol == NULL) {
+   dir->validationProtocol = "https";
   }
   return dir;
 }
