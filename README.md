@@ -1,7 +1,5 @@
 # mod_authn_yubikey
 
-If you want to use your yubikey with your own yubico HSM server you need to use this version of mod_authn_yubikey, because the original one does not support do declare your own AuthYkValidationHost and the AuthYkValidationProtocol.
-
 
 ###### Setup local config files
 To add the user frank.nord with the password foobar123 and the token id abcdefghijkl you have to do:
@@ -37,11 +35,3 @@ Require valid-user
 ```
 
 You can also define your fav. choice of your AuthYkValidationProtocol http or https or … 
-
-###### Build and Install
-This has yet to be documented.
-
-###### ToDo
-Build and upload a current .deb file for simple dpkg -i libapache2-mod-authn-yubikey_$version_amd64.deb because this one inside the Debian apt repository doesn't support this feature.
-
-
