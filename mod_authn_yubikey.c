@@ -32,6 +32,7 @@
 #include "apr_time.h"
 #include "http_core.h"
 #include "http_request.h"
+#include "mod_authn_yubikey.h"
 
 #define APR_WANT_STRFUNC        /* for strcasecmp */
 #include "apr_want.h"
@@ -69,40 +70,6 @@ module AP_MODULE_DECLARE_DATA authn_yubikey_module;
 #define DEFAULT_USER_DB "conf/ykUserDb"
 #define DEFAULT_TMP_DB "conf/ykTmpDb"
 #define UNSET -1
-
-typedef struct
-{
-  /* This is the actual timeout after which the session finally expires,
-   * there is NO recovery from this, so this timeout is not renewed everytime
-   * a user makes a request
-   */
-  int timeoutSeconds;
-  /* This flag requires the protected location to be accessed via an secure Url
-   * this is especially useful if you use the two factor authentication,
-   * since passwords would otherwise be sent in the clear.
-   */
-  int requireSecure;
-  /* If any error happens, this will redirect you to the given error page,
-   * or an internally generated error page will be shown. 
-   * Use this is you want to customize the error page.
-   */
-  int externalErrorPage;
-  /* This is the temporary filename authenticated user are saved in. 
-   * This could possibly be done with an in memory version of s.th. similar
-   * to the database
-   */
-  const char *tmpAuthDbFilename;
-  /* This is the file where the actual user/password connection happens. So 
-   * the module knows where it can find the file where the tokenId/username 
-   * mapping happens.
-   */
-  const char *userAuthDbFilename;
-  /* TODO: NYI 
-   * This is required to be given if you want to use another authentication 
-   * provider which supports the yubikey token, but not via yubicos site.
-   */
-  //const char *validationUrl;
-} yubiauth_dir_cfg;
 
 /* A helper */
 static apr_datum_t string2datum(const char * toStore, request_rec *r)
@@ -447,7 +414,7 @@ static authn_status authn_check_otp(request_rec *r, const char *user,
         int authenticationSuccessful = 0;
         int ret = YUBIKEY_CLIENT_BAD_OTP;
         /* We could not lookup the password, verify the sent password */
-        ret = yubikey_client_simple_request(&password[passwordLength], 1, 0, NULL);
+        ret = yubikey_client_simple_request(&password[passwordLength], 1, 0, NULL, r);
             if (ret == YUBIKEY_CLIENT_OK) {
                 authenticationSuccessful = 1;
             } else {
@@ -619,17 +586,21 @@ static const command_rec authn_yubikey_cmds[] = {
     AP_INIT_TAKE1("AuthYubiKeyTimeout", ap_set_int_slot,
                   (void*) APR_OFFSETOF(yubiauth_dir_cfg, timeoutSeconds),
                   ACCESS_CONF, "The timeout when users have to reauthenticate (Default 43200 seconds [12h])"),
-    //AP_INIT_TAKE1("AuthYkValidationUrl", ap_set_int_slot,
-    //              (void*) APR_OFFSETOF(yubiauth_dir_cfg, validationUrl),
-    //              ACCESS_CONF, "The URL of the location where the key can be" \
-    //		  "authenticated"),
+    AP_INIT_TAKE1("AuthYkValidationProtocol", ap_set_string_slot,
+                  (void*) APR_OFFSETOF(yubiauth_dir_cfg, validationProtocol),
+                  ACCESS_CONF, "The protocol of the URL of the location where the key can be" \
+    		  "authenticated"),
+    AP_INIT_TAKE1("AuthYkValidationHost", ap_set_string_slot,
+                  (void*) APR_OFFSETOF(yubiauth_dir_cfg, validationHost),
+                  ACCESS_CONF, "The host of the URL of the location where the key can be" \
+          "authenticated"),
     AP_INIT_FLAG("AuthYubiKeyExternalErrorPage", ap_set_flag_slot,
                   (void*) APR_OFFSETOF(yubiauth_dir_cfg, externalErrorPage),
                   ACCESS_CONF, "If SSL is required display internal error page, or display custom (406) error" \
 		  "page (Default Off)"),
     AP_INIT_FLAG("AuthYubiKeyRequireSecure", ap_set_flag_slot,
                   (void*) APR_OFFSETOF(yubiauth_dir_cfg, requireSecure),
-                  ACCESS_CONF|RSRC_CONF, 
+                  ACCESS_CONF|RSRC_CONF,
 		 "Whether or not a secure site is required to pass authentication (Default On)"),
     {NULL}
 };
@@ -645,6 +616,8 @@ static void *create_yubiauth_dir_cfg(apr_pool_t *pool, char *x)
 
     dir->tmpAuthDbFilename = NULL;
     dir->userAuthDbFilename = NULL;
+    dir->validationProtocol = NULL;
+    dir->validationHost = NULL;
 
     return dir;
 }
@@ -656,12 +629,15 @@ static void *merge_yubiauth_dir_cfg(apr_pool_t *pool, void *BASE, void *ADD)
   yubiauth_dir_cfg *dir = apr_pcalloc(pool, sizeof (yubiauth_dir_cfg));
 
   /* merge */
-  dir->timeoutSeconds = (add->timeoutSeconds == UNSET) ? base->timeoutSeconds : add->timeoutSeconds; 
+  dir->timeoutSeconds = (add->timeoutSeconds == UNSET) ? base->timeoutSeconds : add->timeoutSeconds;
   dir->requireSecure = (add->requireSecure == UNSET) ? base->requireSecure : add->requireSecure;
   dir->externalErrorPage = (add->externalErrorPage == UNSET) ? base->externalErrorPage : add->externalErrorPage;
-  
+
   dir->userAuthDbFilename = (add->userAuthDbFilename == NULL) ? base->userAuthDbFilename : add->userAuthDbFilename;
   dir->tmpAuthDbFilename = (add->tmpAuthDbFilename == NULL) ? base->tmpAuthDbFilename : add->tmpAuthDbFilename;
+
+  dir->validationHost = (add->validationHost == NULL) ? base->validationHost : add->validationHost;
+  dir->validationProtocol = (add->validationProtocol == NULL) ? base->validationProtocol : add->validationProtocol;
 
   /* Set defaults configuration here
    */
@@ -680,6 +656,12 @@ static void *merge_yubiauth_dir_cfg(apr_pool_t *pool, void *BASE, void *ADD)
   if (dir->tmpAuthDbFilename == NULL) {
     dir->tmpAuthDbFilename = ap_server_root_relative(pool, DEFAULT_TMP_DB);
   }
+  if (dir->validationHost == NULL) {
+   dir->validationHost = "api.yubico.com";
+  }
+  if (dir->validationProtocol == NULL) {
+   dir->validationProtocol = "https";
+  }
   return dir;
 }
 
@@ -693,4 +675,3 @@ module AP_MODULE_DECLARE_DATA authn_yubikey_module = {
     authn_yubikey_cmds, /* table of config file commands       */
     authn_yubikey_register_hooks /* register hooks                      */
 };
-

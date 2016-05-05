@@ -31,6 +31,7 @@
  */
 
 #include "libykclient.h"
+#include "mod_authn_yubikey.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -38,6 +39,7 @@
 #include <ctype.h>
 
 #include <curl/curl.h>
+#include "http_log.h"
 
 #ifdef DEBUG
 # define D(x) do {							\
@@ -106,7 +108,8 @@ int
 yubikey_client_simple_request (const char *yubikey,
 			       unsigned int client_id,
 			       size_t keylen,
-			       const char *key)
+			       const char *key,
+			       request_rec *r)
 {
   yubikey_client_t p;
   int ret;
@@ -115,7 +118,7 @@ yubikey_client_simple_request (const char *yubikey,
 
   yubikey_client_set_info (p, client_id, keylen, key);
 
-  ret = yubikey_client_request (p, yubikey);
+  ret = yubikey_client_request (p, yubikey, r);
 
   yubikey_client_done (&p);
 
@@ -205,10 +208,12 @@ curl_callback (void *ptr, size_t size, size_t nmemb, void *data)
 
 int
 yubikey_client_request (yubikey_client_t client,
-			const char *yubikey)
+			const char *yubikey,
+			request_rec *r)
 {
   struct MemoryStruct chunk = { NULL, 0 };
-  const char *url_template = "http://api.yubico.com/wsapi/verify?id=%d&otp=%s";
+  yubiauth_dir_cfg *cfg = ap_get_module_config(r->per_dir_config, &authn_yubikey_module);
+  const char *url_template = "%s://%s/wsapi/verify?id=%d&otp=%s";
   char *url;
   char *user_agent = NULL;
   char *status;
@@ -218,7 +223,13 @@ yubikey_client_request (yubikey_client_t client,
   //char *proxy = "proxy.example.com";
   //char *proxyPwd = "username:password";
   
-  asprintf (&url, url_template, client->client_id, yubikey);
+  asprintf (&url, url_template, cfg->validationProtocol, cfg->validationHost, client->client_id, yubikey);
+
+  /* ap_log_rerror(APLOG_MARK, APLOG_ERR, 0, r,
+                              "DebugLogging: %s %d %s %s",
+                              url,cfg->timeoutSeconds,cfg->validationProtocol,cfg->validationHost);*/
+
+
   if (!url)
     return YUBIKEY_CLIENT_OUT_OF_MEMORY;
 
